@@ -1,17 +1,14 @@
 ﻿#include "matiral.h"
-#include <sstream>
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-using namespace std;
 
-matiral::matiral(QString dbname, QObject *parent) : QObject(parent)
+matiral::matiral()
 {
     folder = new QDir;
-    matiraldb = new QSqlDatabase;
+    matiraldb = new QSqlDatabase();
     createfolder();
-    *matiraldb = QSqlDatabase::addDatabase("QSQLITE");
-    QString namedb = QString("D:/matiraldatabse/%1.%2").arg(dbname).arg("db");
-    qDebug()<<namedb;
+    QString namedb = QString("D:/matiraldatabse/%1.%2").arg("matiraldatabase614").arg("db");
+    *matiraldb = QSqlDatabase::addDatabase("QSQLITE",namedb);
     matiraldb->setDatabaseName(namedb);
+
     if(!matiraldb->open()){
         qDebug()<<"fail connect";
         return;
@@ -20,11 +17,6 @@ matiral::matiral(QString dbname, QObject *parent) : QObject(parent)
         qDebug()<<"successful connect";
     }
     createtable();
-}
-matiral::~matiral(){
-    delete folder;
-    matiraldb->close();
-    delete matiraldb;
 }
 void matiral::createfolder(){
     bool exist = folder->exists("D:/matiraldatabse");
@@ -40,8 +32,9 @@ void matiral::createfolder(){
 }
 void matiral::createtable(){
     QString Qquery = "CREATE TABLE IF NOT EXISTS MATIRALDB(ID INTEGER PRIMARY KEY AUTOINCREMENT,"
-"MATIRALNAME TEXT, YIELDSTRENGH TEXT, LIMITSTRESS TEXT, ELASTICITYMODULUS TEXT);";
-    QSqlQuery query;
+"MATIRALNAME TEXT, YIELDSTRENGH TEXT, LIMITSTRESS TEXT, ELASTICITYMODULUS TEXT,ARASA TEXT,HARDNESS TEXT,"
+"HEATTREAMENT TEXT);";
+    QSqlQuery query(*matiraldb);
     if(!query.exec(Qquery)){
         qDebug()<<"create table fail"<<query.lastError();
     }else{
@@ -51,8 +44,9 @@ void matiral::createtable(){
 }
 para matiral::getinfo(int ID){
     struct para result;
+    vector<QString> re;
     QString Qquery = QString("SELECT * FROM MATIRALDB WHERE ID=%1").arg(ID);
-    QSqlQuery query;
+    QSqlQuery query(*matiraldb);
     if(!query.exec(Qquery)){
         qDebug()<<"getdata data fail"<<query.lastError();
         return result;
@@ -64,354 +58,91 @@ para matiral::getinfo(int ID){
             result.yieldstrengh = query.value(2).toDouble();
             result.limitstress = query.value(3).toDouble();
             result.elasticitymodulus = query.value(4).toDouble();
+            result.arasa = query.value(5).toDouble();
+            result.hard = query.value(6).toDouble();
+            result.heattreament = query.value(7).toString();
         }else{
             qDebug()<<"end of the table";
         }
         return result;
     }
 }
-
-bool matiral::getinfo(QString matiralname,double yieldstrength,double limitstress,double elasticitymodulus){
-    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE MATIRALNAME='%1' AND YIELDSTRENGH = '%2' AND "
-                        "LIMITSTRESS='%3' AND ELASTICITYMODULUS='%4'").
-            arg(matiralname).
-            arg(yieldstrength).
-            arg(limitstress).
-            arg(elasticitymodulus);
-    QSqlQuery query;
+vector<QString> matiral::getinfovector(const int &ID){
+    vector<QString> re;
+    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE ID=%1").arg(ID);
+    QSqlQuery query(*matiraldb);
+    if(!query.exec(Qquery)){
+        qDebug()<<"getdata data fail"<<query.lastError();
+        return re;
+    }else{
+        if(query.next()){
+            qDebug()<<"getdata data successful";
+            re.push_back(QString::number(query.value(0).toInt()));
+            re.push_back(query.value(1).toString());
+            re.push_back(QString::number(query.value(2).toDouble()));
+            re.push_back(QString::number(query.value(3).toDouble()));
+            re.push_back(QString::number(query.value(4).toDouble()));
+            re.push_back(query.value(5).toString()==""?"":QString::number(query.value(5).toDouble()));
+            re.push_back(query.value(6).toString()==""?"":QString::number(query.value(6).toDouble()));
+            re.push_back(query.value(7).toString());
+        }else{
+            qDebug()<<"end of the table";
+        }
+        return re;
+    }
+}
+bool matiral::getinfobool(const int &ID){
+    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE ID = %1").arg(ID);
+    QSqlQuery query(*matiraldb);
     if(!query.exec(Qquery)){
         qDebug()<<"getdata data fail"<<query.lastError();
         return true;
     }else{
         return query.next();
-        qDebug()<<query.value(0);
     }
-
 }
-void matiral::insertdata(QString matiralname,double yieldstrength,double limitstress,double elasticitymodulus){
-    QString Qquery = QString("INSERT INTO MATIRALDB (MATIRALNAME,YIELDSTRENGH,LIMITSTRESS,ELASTICITYMODULUS) VALUES('%1','%2','%3','%4')").
+int matiral::getID(const QString &matiralname, const double &yieldstrength,
+                   const double &limitstress, const double &elasticitym, const double &arasa, const double &hardness){
+    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE MATIRALNAME='%1' AND YIELDSTRENGH='%2'"
+"AND LIMITSTRESS='%3' AND ELASTICITYMODULUS='%4' AND ARASA='%5' AND HARDNESS='%6'").
             arg(matiralname).
             arg(QString::number(yieldstrength)).
             arg(QString::number(limitstress)).
-            arg(QString::number(elasticitymodulus));
-    QSqlQuery query;
-    if(!query.exec(Qquery)){
-        qDebug()<<"insert data fail"<<query.lastError();
-        return;
-    }else{
-        qDebug()<<"insert data successful";
-    }
-}
-void matiral::insertdata(QString matiralname,double limitstress,double elasticitymodulus){
-    QString Qquery = QString("INSERT INTO MATIRALDB(MATIRALNAME,LIMITSTRESS,ELASTICITYMODULUS) "
-            "VALUES('%1','%2','%3')").
-            arg(matiralname).
-            arg(QString::number(limitstress)).
-            arg(QString::number(elasticitymodulus));
-    qDebug()<<Qquery;
-    QSqlQuery query;
-    if(!query.exec(Qquery)){
-        qDebug()<<"insert data fail"<<query.lastError();
-        return;
-    }else{
-        qDebug()<<"insert data successful";
-    }
-}
-int matiral::getMID(QString matiralname,double yieldstrength,double limitstress,double elasticitymodulus){
-    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE MATIRALNAME='%1' AND YIELDSTRENGH = '%2' AND "
-                        "LIMITSTRESS='%3' AND ELASTICITYMODULUS='%4'").
-            arg(matiralname).
-            arg(yieldstrength).
-            arg(limitstress).
-            arg(elasticitymodulus);
-    QSqlQuery query;
-    if(!query.exec(Qquery)){
-        qDebug()<<"getdata data fail"<<query.lastError();
-        return true;
-    }else{
-        query.next();
-        return query.value(0).toInt();
-    }
-}
-
-
-
-int* matiral::GetProject(int TypeNum,int GoalNum,int MaterialNum,int LimitStress)
-{
-    struct project LoadResult;
-    string TypeId="";
-    string GoalId="";
-    string MaterialId="";
-    string SpecId="";
-    int LoadStress[15];
-
-//    QTableWidgetItem *item[4];
-//    int nCount;
-
-    char ss[10];
-    sprintf(ss,"%03d",MaterialNum);
-
-    switch (TypeNum)
-    {
-    case 1 :
-        TypeId= "001";
-        switch (GoalNum)
-        {
-        case 1 :
-            GoalId= "001";
-            LoadResult.LoadValue=0.5*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-
-
-            break;
-        case 2 :
-            GoalId= "002";
-            LoadResult.LoadValue=0.5*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            LoadStress[0]=LoadResult.LoadValue*0.5;
-
-            break;
-        case 3 :
-            GoalId= "003";
-            LoadResult.LoadValue=0.5*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        }
-        break;
-    case 2 :
-        TypeId= "002";
-        switch (GoalNum)
-        {
-        case 1 :
-            GoalId= "001";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        case 2 :
-            GoalId= "002";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            break;
-        case 3 :
-            GoalId= "003";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        }
-        break;
-    case 3 :
-        TypeId= "003";
-        switch (GoalNum)
-        {
-        case 1 :
-            GoalId= "001";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        case 2 :
-            GoalId= "002";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            break;
-        case 3 :
-            GoalId= "003";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        }
-        break;
-    case 4 :
-        TypeId= "004";
-        switch (GoalNum)
-        {
-        case 1 :
-            GoalId= "001";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        case 2 :
-            GoalId= "002";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            break;
-        case 3 :
-            GoalId= "003";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        }
-        break;
-    case 5 :
-        TypeId= "005";
-        switch (GoalNum)
-        {
-        case 1 :
-            GoalId= "001";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        case 2 :
-            GoalId= "002";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            break;
-        case 3 :
-            GoalId= "003";
-            LoadResult.LoadValue=0.6*LimitStress;
-            LoadResult.Frequency=0.1;
-            LoadResult.RunOut=3000000;
-            SpecId=TypeId+GoalId+ss;
-            LoadResult.SpecId=SpecId;
-
-            for(int ii=0;ii<15;++ii)
-            {
-                double j;
-                j=ii;
-                LoadStress[ii]=LoadResult.LoadValue-0.05*j*LoadResult.LoadValue;
-                cout<<SpecId<<" "<<LoadStress[ii]<<" "<<LoadResult.Frequency<<" "<<LoadResult.RunOut<<endl;
-            }
-            break;
-        }
-        break;
-    }
-
-    int* temp = new int[ARRAY_SIZE(LoadStress)];
-     for ( int i =0; i < ARRAY_SIZE(LoadStress); i++)
-     temp[i] = (int)LoadStress[i];
-      return temp;
-
-}
-
-int matiral::GetLimitStress(int ID){
-    int CurrentStress;
-    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE ID=%1").arg(ID);
-    QSqlQuery query;
+            arg(QString::number(elasticitym)).
+            arg(arasa==0?"":QString::number(arasa)).
+            arg(hardness==0?"":QString::number(hardness));
+    QSqlQuery query(*matiraldb);
     if(!query.exec(Qquery)){
         qDebug()<<"getdata data fail"<<query.lastError();
         return 0;
     }else{
         if(query.next()){
             qDebug()<<"getdata data successful";
-
-            CurrentStress = query.value(3).toDouble();
-
+            return query.value(0).toInt();
         }else{
-            qDebug()<<"end of the table";
+            qDebug()<<"no exisit in table";
         }
-        return CurrentStress;
     }
 }
-bool matiral::getinto(QString matiralname){
-    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE MATIRALNAME='%1'").
-            arg(matiralname);
-    QSqlQuery query;
+int matiral::getdataNUM(){
+    QSqlQuery query(*matiraldb);
+    query.exec("select * from MATIRALDB;");
+    QSqlQueryModel *model = new QSqlQueryModel();
+    model->setQuery(query);
+    while(model->canFetchMore()){
+        model->fetchMore();
+    }
+    return model->rowCount();
+}
+bool matiral::getinfo(QString &matiralname,const double &yieldstrength,
+                      const double &limitstress,const double &elasticitymodulus){
+    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE MATIRALNAME='%1' AND YIELDSTRENGH = '%2' AND "
+                        "LIMITSTRESS='%3' AND ELASTICITYMODULUS='%4'").
+                                                                arg(matiralname).
+                                                                arg(yieldstrength).
+                                                                arg(limitstress).
+                                                                arg(elasticitymodulus);
+    QSqlQuery query(*matiraldb);
     if(!query.exec(Qquery)){
         qDebug()<<"getdata data fail"<<query.lastError();
         return true;
@@ -420,3 +151,74 @@ bool matiral::getinto(QString matiralname){
         qDebug()<<query.value(0);
     }
 }
+void matiral::insertdata(const QString &matiralname,const double &yieldstrength,
+                         const double &limitstress,const double &elasticitymodulus){
+    QString Qquery = QString("INSERT INTO MATIRALDB (MATIRALNAME,YIELDSTRENGH,LIMITSTRESS,ELASTICITYMODULUS) "
+"VALUES('%1','%2','%3','%4')").
+            arg(matiralname).
+            arg(QString::number(yieldstrength)).
+            arg(QString::number(limitstress)).
+            arg(QString::number(elasticitymodulus));
+    QSqlQuery query(*matiraldb);
+    if(!query.exec(Qquery)){
+        qDebug()<<"insert data fail"<<query.lastError();
+        return;
+    }else{
+        //qDebug()<<"insert data successful";
+    }
+}
+void matiral::insertdata(const QString &matiralname,const double &limitstress,const double &elasticitymodulus){
+    QString Qquery = QString("INSERT INTO MATIRALDB(MATIRALNAME,LIMITSTRESS,ELASTICITYMODULUS) "
+            "VALUES('%1','%2','%3')").
+            arg(matiralname).
+            arg(QString::number(limitstress)).
+            arg(QString::number(elasticitymodulus));
+    QSqlQuery query(*matiraldb);
+    if(!query.exec(Qquery)){
+        qDebug()<<"insert data fail"<<query.lastError();
+        return;
+    }else{
+        //qDebug()<<"insert data successful";
+    }
+}
+
+void matiral::insertdata(QString matiralname,double yieldstrength,double limitstress,double elasticitymodulus,
+                double arasa,double hard,QString heattreament){
+    QString Qquery = QString("INSERT INTO MATIRALDB(MATIRALNAME,YIELDSTRENGH,"
+"LIMITSTRESS,ELASTICITYMODULUS,ARASA,HARDNESS,HEATTREAMENT) VALUES ('%1','%2','%3','%4','%5','%6','%7')").
+            arg(matiralname).
+            arg((yieldstrength==0?"":QString::number(yieldstrength))).
+            arg(QString::number(limitstress)).
+            arg(QString::number(elasticitymodulus)).
+            arg((arasa==0?"":QString::number(arasa))).
+            arg((hard==0?"":QString::number(hard))).
+            arg((heattreament==""?"":heattreament));
+
+    QSqlQuery query(*matiraldb);
+    if(!query.exec(Qquery)){
+        qDebug()<<"insert data fail"<<query.lastError();
+        return;
+    }else{
+        qDebug()<<"insert data successful";
+    }
+}
+
+bool matiral::getinfo(const QString &matiralname,const double &yieldstrength,const double &limitstress,
+                      const double &elasticitym, const double &arasa, const double &hardness){
+    QString Qquery = QString("SELECT * FROM MATIRALDB WHERE MATIRALNAME='%1' AND YIELDSTRENGH='%2'"
+"AND LIMITSTRESS='%3' AND ELASTICITYMODULUS='%4' AND ARASA='%5' AND HARDNESS='%6'").
+            arg(matiralname).
+            arg(QString::number(yieldstrength)).
+            arg(QString::number(limitstress)).
+            arg(QString::number(elasticitym)).
+            arg(arasa==0?"":QString::number(arasa)).
+            arg(hardness==0?"":QString::number(hardness));
+    QSqlQuery query(*matiraldb);
+    if(!query.exec(Qquery)){
+        qDebug()<<"getdata data fail"<<query.lastError();
+        return true;
+    }else{
+        return query.next();
+    }
+}
+

@@ -2,8 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "matiral.h"
-#include "exp_log.h"
+#include <a_exptap_choose.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -16,16 +15,14 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-//    void insertTableItems(void);
-
-
-
+signals:
+    void showace(int type);
 private slots:
-    void on_pushButton_clicked();
+    void on_rotoate_clicked();
+    void showmainwindow();
 
 private:
     Ui::MainWindow *ui;
-    matiral *m;
-    //exp_log *e;
+    a_exptap_choose *aec;
 };
 #endif // MAINWINDOW_H
